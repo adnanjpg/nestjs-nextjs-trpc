@@ -1,17 +1,29 @@
-import { INestApplication, Injectable } from '@nestjs/common';
+import { INestApplication, Inject, Injectable } from '@nestjs/common';
 import { TrpcService } from '@server/trpc/trpc.service';
 import { z } from 'zod';
 import * as trpcExpress from '@trpc/server/adapters/express';
+import { CatsService } from '@server/cats/cats.service';
 
 @Injectable()
 export class TrpcRouter {
-  constructor(private readonly trpc: TrpcService) {}
+  private _catsService: CatsService;
+  constructor(
+    private readonly trpc: TrpcService,
+    @Inject(CatsService) private catsService: CatsService,
+  ) {
+    this._catsService = catsService;
+  }
 
   appRouter = this.trpc.router({
-    hello: this.trpc.procedure
+    hellocats: this.trpc.procedure
       .input(z.object({ name: z.string().optional() }))
-      .query(({ input }) => {
-        return `Hello ${input.name ? input.name : `Bilbo`}`;
+      .query(async ({ input }) => {
+        const cats = await this._catsService.findAll();
+
+        const cat = cats[0];
+        const catStr = `Cat: ${cat.name} is ${cat.age} years old. It is of breed ${cat.breed}`;
+
+        return catStr;
       }),
   });
 
